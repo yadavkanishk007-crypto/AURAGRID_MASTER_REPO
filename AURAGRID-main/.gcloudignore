@@ -1,0 +1,37 @@
+# Ignore common VCS and IDE metadata
+.git/
+.gitignore
+.gitattributes
+.vscode/
+.idea/
+
+# Ignore local virtual environments
+venv/
+.venv/
+env/
+ENV/
+WEBCOMMAND/
+
+# Ignore Python compiled cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.log
+
+# Ignore env config files
+.env
+.env.*
+!.env.example
+
+# Ignore mobile application directory (Flutter app)
+mobile_app/
+
+# Ignore local documentation and other non-backend files
+db_design_specs.md
+GCP_DEPLOYMENT_WALKTHROUGH.md
+README.md
+walkthrough.md
+task.md
+implementation_plan.md

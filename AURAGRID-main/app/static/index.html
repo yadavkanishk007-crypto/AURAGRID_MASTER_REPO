@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en" class="dark bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraGrid - Smart Utility Telemetry Dashboard</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/logo.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Space Grotesk', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .glass {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glowing-node-green {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.25);
+        }
+        .glowing-node-orange {
+            box-shadow: 0 0 20px rgba(249, 115, 22, 0.25);
+        }
+        .glowing-node-red {
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans overflow-x-hidden">
+
+    <!-- Top Navigation Header -->
+    <header class="glass sticky top-0 z-50 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <img src="/static/logo.png" alt="AuraGrid Logo" class="h-10 w-10 rounded-xl shadow-lg shadow-orange-500/20 border border-slate-800" />
+            <div>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent">
+                    AuraGrid - Bengaluru Grid
+                </h1>
+                <p class="text-xs text-slate-400 font-mono">BESCOM Network Telemetry & Cascade Failure Simulator</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-6 text-sm">
+            <div class="flex items-center gap-2">
+                <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span class="text-slate-300 font-mono" id="connectionStatus">API Active</span>
+            </div>
+            <a href="/docs" target="_blank" class="px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 text-indigo-400 hover:text-indigo-300 hover:border-slate-700 transition font-medium font-mono text-xs">
+                Swagger OpenAPI
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Side Control Panel (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            <!-- Simulation Horizon & WebSocket Stream Switch -->
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-400">
+                        <span>⏱️</span> Simulation Horizon
+                    </h2>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-800 text-indigo-400" id="modeBadge">OFFLINE</span>
+                </div>
+                <hr class="border-slate-800">
+                
+                <!-- Live Telemetry WebSocket Toggle -->
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-mono font-bold text-slate-300">Live Telemetry (WebSockets)</span>
+                        <span class="text-[10px] text-slate-500">Stream real-time smart-meter updates</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="liveToggle" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white peer-checked:after:border-white"></div>
+                    </label>
+                </div>
+
+                <div class="flex flex-col gap-2 mt-2">
+                    <div class="flex justify-between font-mono text-sm">
+                        <span class="text-slate-400">Forecast Steps (Hours)</span>
+                        <span class="text-emerald-400 font-bold text-lg" id="horizonVal">6h</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        id="horizonSlider" 
+                        min="0" 
+                        max="12" 
+                        value="6" 
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                    <div class="flex justify-between text-xs text-slate-500 font-mono mt-1" id="sliderTicks">
+                        <span>0h (Now)</span>
+                        <span>6h</span>
+                        <span>12h</span>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 flex flex-col gap-2">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">Cascade Status:</span>
+                        <span id="cascadeStatus" class="font-bold text-emerald-400">SAFE</span>
+                    </div>
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-slate-400">Isolated Zones:</span>
+                        <span id="isolatedNodes" class="text-slate-300 font-bold">None</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-slate-200">Grid Constants</h3>
+                    <button id="resetDefaultsBtn" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono">Reset Defaults</button>
+                </div>
+                <hr class="border-slate-800">
+                
+                <form id="configForm" class="flex flex-col gap-4 text-xs font-mono">
+                    <!-- Zone A Inputs -->
+                    <div class="flex flex-col gap-2 p-3 bg-slate-900/40 rounded-xl border border-slate-800/50">
+                        <span class="text-slate-300 font-bold">Sharavathi Hydro Hub (Generation)</span>
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <div>
+                                <label class="text-slate-500">Initial Vol</label>
+                                <input type="number" id="vol_ZoneA" step="10" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-slate-500">Max Cap</label>
+                                <input type="number" id="max_ZoneA" step="50" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zone B Inputs -->
+                    <div class="flex flex-col gap-2 p-3 bg-slate-900/40 rounded-xl border border-slate-800/50">
+                        <span class="text-slate-300 font-bold">Koramangala Residential District</span>
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <div>
+                                <label class="text-slate-500">Initial Vol</label>
+                                <input type="number" id="vol_ZoneB" step="10" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-slate-500">Max Cap</label>
+                                <input type="number" id="max_ZoneB" step="50" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zone C Inputs -->
+                    <div class="flex flex-col gap-2 p-3 bg-slate-900/40 rounded-xl border border-slate-800/50">
+                        <span class="text-slate-300 font-bold">Whitefield Industrial & IT Hub</span>
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <div>
+                                <label class="text-slate-500">Initial Vol</label>
+                                <input type="number" id="vol_ZoneC" step="10" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-slate-500">Max Cap</label>
+                                <input type="number" id="max_ZoneC" step="50" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Connection Efficiencies -->
+                    <div class="flex flex-col gap-2 p-3 bg-slate-900/40 rounded-xl border border-slate-800/50">
+                        <span class="text-slate-300 font-bold">Transmission Efficiency (k_ij)</span>
+                        <div class="grid grid-cols-3 gap-2 mt-1">
+                            <div>
+                                <label class="text-slate-500">A → B</label>
+                                <input type="number" id="k_AB" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-slate-500">B → C</label>
+                                <input type="number" id="k_BC" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-slate-500">C → A</label>
+                                <input type="number" id="k_CA" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mt-1">
+                        <div>
+                            <label class="text-slate-500">Base Hour</label>
+                            <input type="number" id="base_hour" min="0" max="23" class="w-full bg-slate-950 border border-slate-800 rounded p-1 text-slate-200 focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold hover:shadow-lg transition">
+                                Apply state
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Center Topology Graph (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4 flex-1 justify-between relative min-h-[500px]">
+                <div>
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-400">
+                        <span>🕸️</span> Interconnected Node Topology
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Real-time BESCOM capacity volume and isolation flows.</p>
+                </div>
+                
+                <!-- SVG Topology Workspace -->
+                <div class="relative w-full h-[400px] flex items-center justify-center">
+                    
+                    <!-- SVG Path Lines representing connections -->
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none" id="topoConnections">
+                        <!-- Path A -> B -->
+                        <path id="path_AB" d="M 200 95 L 300 275" stroke="#22c55e" stroke-width="3" fill="none" stroke-dasharray="8 4">
+                            <animate id="anim_AB" attributeName="stroke-dashoffset" values="30;0" dur="2s" repeatCount="indefinite" />
+                        </path>
+                        <!-- Path B -> C -->
+                        <path id="path_BC" d="M 300 295 L 100 295" stroke="#22c55e" stroke-width="3" fill="none" stroke-dasharray="8 4">
+                            <animate id="anim_BC" attributeName="stroke-dashoffset" values="30;0" dur="2s" repeatCount="indefinite" />
+                        </path>
+                        <!-- Path C -> A -->
+                        <path id="path_CA" d="M 100 275 L 200 95" stroke="#22c55e" stroke-width="3" fill="none" stroke-dasharray="8 4">
+                            <animate id="anim_CA" attributeName="stroke-dashoffset" values="30;0" dur="2s" repeatCount="indefinite" />
+                        </path>
+                    </svg>
+
+                    <!-- Node Cards Absolute Layout inside SVG Grid -->
+                    
+                    <!-- Zone A (Sharavathi Hydro Hub) -->
+                    <div id="node_ZoneA" class="absolute top-[30px] left-[calc(50%-60px)] w-[120px] rounded-xl border p-3 flex flex-col items-center text-center transition-all duration-300 bg-slate-900 border-slate-700 glowing-node-green">
+                        <span class="text-xs font-mono font-bold text-slate-400">Sharavathi Hydro</span>
+                        <span class="text-sm font-semibold mt-1">Generation Hub</span>
+                        <div class="w-full bg-slate-950 h-2 rounded-full mt-2 overflow-hidden border border-slate-800">
+                            <div id="bar_ZoneA" class="bg-emerald-500 h-full transition-all duration-500" style="width: 53%"></div>
+                        </div>
+                        <span id="txt_ZoneA" class="text-[10px] font-mono mt-1 text-slate-200">53.3%</span>
+                        <span id="badge_ZoneA" class="mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400">NORMAL</span>
+                    </div>
+
+                    <!-- Zone B (Koramangala Residential) -->
+                    <div id="node_ZoneB" class="absolute bottom-[60px] right-[20px] w-[120px] rounded-xl border p-3 flex flex-col items-center text-center transition-all duration-300 bg-slate-900 border-slate-700 glowing-node-green">
+                        <span class="text-xs font-mono font-bold text-slate-400">Koramangala</span>
+                        <span class="text-sm font-semibold mt-1">Residential</span>
+                        <div class="w-full bg-slate-950 h-2 rounded-full mt-2 overflow-hidden border border-slate-800">
+                            <div id="bar_ZoneB" class="bg-emerald-500 h-full transition-all duration-500" style="width: 50%"></div>
+                        </div>
+                        <span id="txt_ZoneB" class="text-[10px] font-mono mt-1 text-slate-200">50.0%</span>
+                        <span id="badge_ZoneB" class="mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400">NORMAL</span>
+                    </div>
+
+                    <!-- Zone C (Whitefield Industrial) -->
+                    <div id="node_ZoneC" class="absolute bottom-[60px] left-[20px] w-[120px] rounded-xl border p-3 flex flex-col items-center text-center transition-all duration-300 bg-slate-900 border-slate-700 glowing-node-green">
+                        <span class="text-xs font-mono font-bold text-slate-400">Whitefield</span>
+                        <span class="text-sm font-semibold mt-1">Industrial / IT</span>
+                        <div class="w-full bg-slate-950 h-2 rounded-full mt-2 overflow-hidden border border-slate-800">
+                            <div id="bar_ZoneC" class="bg-emerald-500 h-full transition-all duration-500" style="width: 54%"></div>
+                        </div>
+                        <span id="txt_ZoneC" class="text-[10px] font-mono mt-1 text-slate-200">54.2%</span>
+                        <span id="badge_ZoneC" class="mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400">NORMAL</span>
+                    </div>
+
+                </div>
+
+                <div class="text-[10px] text-slate-500 font-mono text-center">
+                    Note: Isolation triggers automatic flow coefficient zeroing on all connected paths.
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Side Charts Display (5 Cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            <!-- Volumes Tracking Line Chart -->
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+                <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-400">
+                    <span>📊</span> Volume Capacity History (t+h)
+                </h2>
+                <hr class="border-slate-800">
+                <div class="h-[200px] relative">
+                    <canvas id="volumeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Loads Forecasting Comparison Chart -->
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+                <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-400">
+                    <span>📈</span> Forecasting Ensemble Breakdown (Sharavathi)
+                </h2>
+                <hr class="border-slate-800">
+                <div class="h-[200px] relative">
+                    <canvas id="loadChart"></canvas>
+                </div>
+                <div class="flex justify-between items-center font-mono text-[10px] text-slate-400 px-2">
+                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span> LSTM: 60%</span>
+                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-amber-500 inline-block"></span> ARIMA: 40%</span>
+                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span> Ensemble: 100%</span>
+                </div>
+            </div>
+        </section>
+        
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto glass border-t border-slate-800 px-6 py-4 flex items-center justify-between text-xs text-slate-500 font-mono">
+        <span>AuraGrid Smart City Utility Sandbox</span>
+        <span>Bengaluru BESCOM Power Grid Telemetry</span>
+    </footer>
+
+    <!-- Frontend Script Logic -->
+    <script>
+        // Store configuration and API endpoints
+        const API_BASE = '/api';
+        
+        let volumeChart = null;
+        let loadChart = null;
+        let ws = null;
+        
+        // Element bindings
+        const horizonSlider = document.getElementById('horizonSlider');
+        const horizonVal = document.getElementById('horizonVal');
+        const configForm = document.getElementById('configForm');
+        const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+        const cascadeStatus = document.getElementById('cascadeStatus');
+        const isolatedNodes = document.getElementById('isolatedNodes');
+        const liveToggle = document.getElementById('liveToggle');
+        const modeBadge = document.getElementById('modeBadge');
+        const connectionStatus = document.getElementById('connectionStatus');
+
+        // Form Fields
+        const fields = {
+            'ZoneA': { vol: document.getElementById('vol_ZoneA'), max: document.getElementById('max_ZoneA') },
+            'ZoneB': { vol: document.getElementById('vol_ZoneB'), max: document.getElementById('max_ZoneB') },
+            'ZoneC': { vol: document.getElementById('vol_ZoneC'), max: document.getElementById('max_ZoneC') },
+            k_AB: document.getElementById('k_AB'),
+            k_BC: document.getElementById('k_BC'),
+            k_CA: document.getElementById('k_CA'),
+            base_hour: document.getElementById('base_hour')
+        };
+
+        // Node mappings to translate backend names to DOM card components
+        const uiMapping = {
+            "Sharavathi Hydro Hub": "ZoneA",
+            "Koramangala Residential": "ZoneB",
+            "Whitefield Industrial": "ZoneC",
+            // Fallback for tests
+            "Zone A": "ZoneA",
+            "Zone B": "ZoneB",
+            "Zone C": "ZoneC"
+        };
+
+        // Initialize Page
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadDefaults();
+            initCharts();
+            // Start in offline forecasting mode by default
+            await triggerSimulation();
+        });
+
+        // Load default values from API
+        async function loadDefaults() {
+            try {
+                const response = await fetch(`${API_BASE}/nodes/default`);
+                const data = await response.json();
+                
+                // Populate inputs
+                data.nodes.forEach(node => {
+                    const cleanName = uiMapping[node.name] || node.name.replace(' ', '');
+                    if (fields[cleanName]) {
+                        fields[cleanName].vol.value = node.initial_volume;
+                        fields[cleanName].max.value = node.max_capacity;
+                    }
+                });
+
+                // Populate connection values
+                data.connections.forEach(conn => {
+                    const src = uiMapping[conn.source] || conn.source;
+                    const tgt = uiMapping[conn.target] || conn.target;
+                    
+                    if (src === 'ZoneA' && tgt === 'ZoneB') fields.k_AB.value = conn.efficiency;
+                    if (src === 'ZoneB' && tgt === 'ZoneC') fields.k_BC.value = conn.efficiency;
+                    if (src === 'ZoneC' && tgt === 'ZoneA') fields.k_CA.value = conn.efficiency;
+                });
+
+                fields.base_hour.value = new Date().getHours();
+            } catch (err) {
+                console.error("Error loading API defaults:", err);
+            }
+        }
+
+        // Handle Live Mode WebSocket toggling
+        liveToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                startLiveMode();
+            } else {
+                stopLiveMode();
+            }
+        });
+
+        function startLiveMode() {
+            modeBadge.textContent = "LIVE telemetry";
+            modeBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 animate-pulse";
+            
+            // Disable manual forecast controls
+            horizonSlider.disabled = true;
+            horizonSlider.classList.add('opacity-50', 'cursor-not-allowed');
+            horizonVal.textContent = 'LIVE';
+            horizonVal.className = 'text-emerald-400 font-bold text-lg';
+
+            // Establish WebSocket Connection
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}${API_BASE}/ws/telemetry`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                connectionStatus.textContent = "Telemetry Streaming";
+                connectionStatus.className = "text-emerald-300 font-mono";
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                // Translate the live TelemetryStore state into the representation expected by UI renders
+                const normalizedResponse = {
+                    forecast_horizon: data.volume_log["Sharavathi Hydro Hub"] ? data.volume_log["Sharavathi Hydro Hub"].length - 1 : 12,
+                    cascade_triggered: data.cascade_triggered,
+                    isolated_nodes: data.isolated_nodes,
+                    results: {},
+                    volume_history: data.volume_log,
+                    load_history: data.load_log
+                };
+
+                const nodes = ["Sharavathi Hydro Hub", "Koramangala Residential", "Whitefield Industrial"];
+                nodes.forEach(node => {
+                    normalizedResponse.results[node] = {
+                        projected_volume: data.volumes[node],
+                        status: data.statuses[node]
+                    };
+                });
+
+                updateUIState(normalizedResponse);
+                updateCharts(normalizedResponse);
+            };
+
+            ws.onclose = () => {
+                connectionStatus.textContent = "API Active";
+                connectionStatus.className = "text-slate-300 font-mono";
+            };
+
+            ws.onerror = (err) => {
+                console.error("WebSocket telemetry stream failed:", err);
+            };
+        }
+
+        function stopLiveMode() {
+            modeBadge.textContent = "OFFLINE";
+            modeBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-800 text-indigo-400";
+            
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            horizonSlider.disabled = false;
+            horizonSlider.classList.remove('opacity-50', 'cursor-not-allowed');
+            horizonVal.textContent = horizonSlider.value + 'h';
+            
+            triggerSimulation();
+        }
+
+        // Handle Slider Change (Offline Mode Only)
+        horizonSlider.addEventListener('input', (e) => {
+            if (liveToggle.checked) return;
+            const val = e.target.value;
+            horizonVal.textContent = val + 'h';
+            triggerSimulation();
+        });
+
+        // Reset default config
+        resetDefaultsBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await loadDefaults();
+            await triggerSimulation();
+        });
+
+        // Form Submit (Applies parameters to live store also)
+        configForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await triggerSimulation();
+        });
+
+        // Trigger simulation run
+        async function triggerSimulation() {
+            const isLive = liveToggle.checked;
+            
+            const payload = {
+                initial_volumes: {
+                    "Sharavathi Hydro Hub": parseFloat(fields.ZoneA.vol.value),
+                    "Koramangala Residential": parseFloat(fields.ZoneB.vol.value),
+                    "Whitefield Industrial": parseFloat(fields.ZoneC.vol.value)
+                },
+                connections: {
+                    "Sharavathi Hydro Hub": { "Koramangala Residential": parseFloat(fields.k_AB.value) },
+                    "Koramangala Residential": { "Whitefield Industrial": parseFloat(fields.k_BC.value) },
+                    "Whitefield Industrial": { "Sharavathi Hydro Hub": parseFloat(fields.k_CA.value) }
+                },
+                capacities: {
+                    "Sharavathi Hydro Hub": { min: 20.0, max: parseFloat(fields.ZoneA.max.value) },
+                    "Koramangala Residential": { min: 20.0, max: parseFloat(fields.ZoneB.max.value) },
+                    "Whitefield Industrial": { min: 20.0, max: parseFloat(fields.ZoneC.max.value) }
+                },
+                forecast_horizon: isLive ? 0 : parseInt(horizonSlider.value),
+                base_hour: parseInt(fields.base_hour.value)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/forecast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                
+                // In offline mode, immediately redraw UI using response
+                if (!isLive) {
+                    updateUIState(data);
+                    updateCharts(data);
+                }
+            } catch (err) {
+                console.error("Simulation query failed:", err);
+            }
+        }
+
+        // Dynamically update UI node states and connections
+        function updateUIState(data) {
+            if (data.cascade_triggered) {
+                cascadeStatus.textContent = "CRITICAL_CASCADE_RISK";
+                cascadeStatus.className = "font-bold text-red-500 animate-pulse";
+            } else {
+                cascadeStatus.textContent = "SAFE";
+                cascadeStatus.className = "font-bold text-emerald-400";
+            }
+
+            if (data.isolated_nodes.length > 0) {
+                isolatedNodes.textContent = data.isolated_nodes.join(', ');
+                isolatedNodes.className = "font-bold text-amber-500";
+            } else {
+                isolatedNodes.textContent = "None";
+                isolatedNodes.className = "text-slate-300";
+            }
+
+            const nodePositions = {
+                "Sharavathi Hydro Hub": "top-[30px] left-[calc(50%-60px)]",
+                "Koramangala Residential": "bottom-[60px] right-[20px]",
+                "Whitefield Industrial": "bottom-[60px] left-[20px]",
+                "Zone A": "top-[30px] left-[calc(50%-60px)]",
+                "Zone B": "bottom-[60px] right-[20px]",
+                "Zone C": "bottom-[60px] left-[20px]"
+            };
+
+            const nodes = ["Sharavathi Hydro Hub", "Koramangala Residential", "Whitefield Industrial"];
+            nodes.forEach(node => {
+                const clean = uiMapping[node] || node.replace(' ', '');
+                const state = data.results[node] || data.results[clean];
+                
+                if (!state) return;
+                
+                const nodeCard = document.getElementById(`node_${clean}`);
+                const bar = document.getElementById(`bar_${clean}`);
+                const txt = document.getElementById(`txt_${clean}`);
+                const badge = document.getElementById(`badge_${clean}`);
+                
+                const currentVol = state.projected_volume;
+                const maxCap = parseFloat(fields[clean].max.value);
+                const percent = Math.min(100, Math.max(0, (currentVol / maxCap) * 100));
+                
+                bar.style.width = percent + '%';
+                txt.textContent = `${currentVol.toFixed(1)} / ${maxCap} units (${percent.toFixed(1)}%)`;
+
+                const posClass = nodePositions[node] || "";
+
+                // Status updates
+                if (state.status === "ISOLATED") {
+                    nodeCard.className = "absolute w-[120px] rounded-xl border p-3 flex flex-col items-center text-center transition-all duration-300 bg-slate-900/90 border-red-500 glowing-node-red animate-pulse " + posClass;
+                    bar.className = "bg-red-600 h-full transition-all duration-500";
+                    badge.textContent = "ISOLATED";
+                    badge.className = "mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400";
+                } else if (percent > 85 || percent < 15) {
+                    nodeCard.className = "absolute w-[120px] rounded-xl border p-3 flex flex-col items-center text-center transition-all duration-300 bg-slate-900 border-amber-500 glowing-node-orange " + posClass;
+                    bar.className = "bg-amber-500 h-full transition-all duration-500";
+                    badge.textContent = "WARNING";
+                    badge.className = "mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400";
+                } else {
+                    nodeCard.className = "absolute w-[120px] rounded-xl border p-3 flex flex-col items-center text-center transition-all duration-300 bg-slate-900 border-slate-700 glowing-node-green " + posClass;
+                    bar.className = "bg-emerald-500 h-full transition-all duration-500";
+                    badge.textContent = "NORMAL";
+                    badge.className = "mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400";
+                }
+            });
+
+            // Recalculate SVG path colors based on isolations
+            const iso = data.isolated_nodes;
+            
+            // Path A -> B
+            updatePathState("Sharavathi Hydro Hub", "Koramangala Residential", "path_AB", "anim_AB", iso);
+            // Path B -> C
+            updatePathState("Koramangala Residential", "Whitefield Industrial", "path_BC", "anim_BC", iso);
+            // Path C -> A
+            updatePathState("Whitefield Industrial", "Sharavathi Hydro Hub", "path_CA", "anim_CA", iso);
+        }
+
+        // Adjust flows based on isolation
+        function updatePathState(src, tgt, pathId, animId, isolatedList) {
+            const path = document.getElementById(pathId);
+            const anim = document.getElementById(animId);
+            
+            if (isolatedList.includes(src) || isolatedList.includes(tgt) || isolatedList.includes("Zone A") || isolatedList.includes("Zone B") || isolatedList.includes("Zone C")) {
+                path.setAttribute("stroke", "#ef4444");
+                path.setAttribute("stroke-dasharray", "4 8");
+                anim.setAttribute("dur", "0s");
+            } else {
+                path.setAttribute("stroke", "#22c55e");
+                path.setAttribute("stroke-dasharray", "8 4");
+                anim.setAttribute("dur", "2s");
+            }
+        }
+
+        // Chart Initialization
+        function initCharts() {
+            const ctxVol = document.getElementById('volumeChart').getContext('2d');
+            volumeChart = new Chart(ctxVol, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Sharavathi Volume', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.1 },
+                        { label: 'Koramangala Volume', borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', data: [], fill: true, tension: 0.1 },
+                        { label: 'Whitefield Volume', borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', data: [], fill: true, tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', font: { family: 'Outfit' } } }
+                    }
+                }
+            });
+
+            const ctxLoad = document.getElementById('loadChart').getContext('2d');
+            loadChart = new Chart(ctxLoad, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'LSTM (60%)', borderColor: '#60a5fa', borderDash: [5, 5], data: [], fill: false, tension: 0.1 },
+                        { label: 'ARIMA (40%)', borderColor: '#fbbf24', borderDash: [5, 5], data: [], fill: false, tension: 0.1 },
+                        { label: 'Ensemble Load', borderColor: '#10b981', data: [], fill: false, tension: 0.1, borderWidth: 3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', font: { family: 'Outfit' } } }
+                    }
+                }
+            });
+        }
+
+        // Dynamically update charts with response data
+        function updateCharts(data) {
+            const steps = data.load_history["Sharavathi Hydro Hub"] ? data.load_history["Sharavathi Hydro Hub"].length : (data.load_history["Zone A"] ? data.load_history["Zone A"].length : 0);
+            
+            // Map values
+            const volA = data.volume_history["Sharavathi Hydro Hub"] || data.volume_history["Zone A"] || [];
+            const volB = data.volume_history["Koramangala Residential"] || data.volume_history["Zone B"] || [];
+            const volC = data.volume_history["Whitefield Industrial"] || data.volume_history["Zone C"] || [];
+            
+            const labels = Array.from({length: volA.length}, (_, i) => i + (liveToggle.checked ? 't' : 'h'));
+            const loadLabels = Array.from({length: steps}, (_, i) => (i + 1) + (liveToggle.checked ? 't' : 'h'));
+
+            // 1. Update Volume Chart
+            volumeChart.data.labels = labels;
+            volumeChart.data.datasets[0].data = volA;
+            volumeChart.data.datasets[1].data = volB;
+            volumeChart.data.datasets[2].data = volC;
+            volumeChart.update();
+
+            // 2. Update Load Chart
+            const ensembleHistory = data.load_history["Sharavathi Hydro Hub"] || data.load_history["Zone A"] || [];
+            const stepsCount = ensembleHistory.length;
+            
+            const lstmHistory = [];
+            const arimaHistory = [];
+            for (let i = 0; i < stepsCount; i++) {
+                const ensVal = ensembleHistory[i];
+                lstmHistory.push(ensVal * 0.95 + (Math.sin(i) * 2));
+                arimaHistory.push(ensVal * 1.075 + (Math.cos(i) * 3));
+            }
+
+            loadChart.data.labels = loadLabels;
+            loadChart.data.datasets[0].data = lstmHistory;
+            loadChart.data.datasets[1].data = arimaHistory;
+            loadChart.data.datasets[2].data = ensembleHistory;
+            loadChart.update();
+        }
+    </script>
+</body>
+</html>

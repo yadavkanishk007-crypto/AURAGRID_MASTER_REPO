@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+WEBCOMMAND/
+
+# Python Cache & Logs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.log
+
+# Environment Files
+.env
+.env.*
+!.env.example
+
+# Local development files and documents
+db_design_specs.md
+mobile_app/
+*.md
+.vscode/
+.idea/
