@@ -502,7 +502,8 @@ async def predict_cascade_horizon(payload: CascadeRequest, horizon: int = 0, cit
             "confusion_matrix_metrics": confusion_matrix_metrics,
             "failure_matrix_metrics": failure_matrix_metrics,
             "cascading_matrix_metrics": cascading_matrix_metrics,
-            "predicted_load_vectors": predicted_load_vectors
+            "predicted_load_vectors": predicted_load_vectors,
+            "agentic_switch_enabled": telemetry_store.agentic_switch_enabled.get(city_id, False)
         }
         
         # Inject compatibility keys at root level for Next.js control room dashboard
@@ -645,11 +646,35 @@ async def switch_active_city(payload: CitySwitchRequest):
             "active_city": city_name,
             "city_name": settings.all_cities[city_name].display_name,
             "node_count": len(settings.all_cities[city_name].nodes),
-            "connection_count": len(settings.all_cities[city_name].connections)
+            "connection_count": len(settings.all_cities[city_name].connections),
+            "agentic_switch_enabled": telemetry_store.agentic_switch_enabled.get(city_name, False)
         }
     except Exception as e:
         logger.error(f"Operational reset failed for city {city_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Reset city execution error: {str(e)}")
+
+
+class AgenticSwitchRequest(BaseModel):
+    enabled: bool
+    city_id: str = "bengaluru"
+
+@router.post("/settings/agentic")
+async def toggle_agentic_switch(payload: AgenticSwitchRequest):
+    """
+    Enables or disables the AI Agentic Switch proactive tripping for a city grid.
+    """
+    city_name = payload.city_id.strip().lower()
+    telemetry_store.agentic_switch_enabled[city_name] = payload.enabled
+    logger.info(f"AI Agentic Switch proactive protection set to {payload.enabled} for city: {city_name}")
+    
+    # Broadcast updated state containing new agentic status
+    await manager.broadcast({"city_id": city_name, **telemetry_store.get_state(city_name)})
+    
+    return {
+        "status": "success",
+        "agentic_switch_enabled": payload.enabled,
+        "city_id": city_name
+    }
 
 @router.get("/settings/cities")
 def get_supported_cities():

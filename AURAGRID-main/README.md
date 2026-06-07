@@ -24,9 +24,9 @@
 
 ## 🔍 Project Overview
 
-**AuraGrid** is an advanced telemetry ingestion, forecasting, and simulation platform engineered specifically to handle the unique challenges of electrical distribution networks across **lower-tier and higher-tier Indian cities**.
+**AuraGrid** is an advanced telemetry ingestion, forecasting, and simulation platform engineered specifically to handle the unique challenges of electrical distribution networks across **lower-tier (Tier-2/Tier-3) and higher-tier (Tier-1) Indian cities**. 
 
-Indian power grids experience highly dynamic load variations, ranging from rapid industrial surges in manufacturing hubs to fluctuating household demands. AuraGrid combines cutting-edge neuro-evolutionary algorithms and wavelet regression methods with rigorous statistical testing to predict load patterns and prevent cascading failures.
+Indian power grids experience highly dynamic load variations, ranging from rapid industrial surges in manufacturing hubs to fluctuating household demands. AuraGrid combines a dual-model time-series forecasting ensemble with a compartment mass-balance filter to prevent cascading outages and blackouts across interconnected substations.
 
 To validate the engine under real-world conditions, the platform was successfully **tested and calibrated using the Bengaluru BESCOM Network topology**.
 
@@ -59,10 +59,7 @@ graph TD
     end
 
     subgraph COMP ["AuraGrid Inference & Simulation Engine"]
-        NE["Neuro-Evolutionary Forecasting"]:::engine
-        WR["Wavelet Regression Analysis"]:::engine
-        STAT["Statistical Testing (ADF, PP)"]:::engine
-        MOF["Multi-Objective Optimization"]:::engine
+        ENS["LSTM + ARIMA Ensemble"]:::engine
         MBF["Compartment Mass-Balance Filter"]:::engine
     end
 
@@ -77,13 +74,8 @@ graph TD
     T_DAEMON -->|Tick Simulation| T_STORE
     T_STORE -->|Sync State| SUPA
     REST -->|Execute| COMP
-    COMP -->|Forecast & Optimize| NE
-    COMP -->|Decompose & Regress| WR
-    COMP -->|Validate Stationarity| STAT
-    COMP -->|Optimize Objectives| MOF
-    NE -->|Predict Load| MBF
-    WR -->|Wavelet Coefficients| MBF
-    MOF -->|Optimized Parameters| MBF
+    COMP -->|Predict / Simulate| ENS
+    ENS -->|Predict Load| MBF
     MBF -->|Return Volumes & Status| REST
 ```
 
@@ -91,34 +83,16 @@ graph TD
 
 ## ✨ Key Features
 
-*   **🧠 Neuro-Evolutionary Forecasting**:
-    *   Employs advanced evolutionary algorithms that adaptively optimize neural network architectures for dynamic load prediction.
-    *   Dynamically adapts to changing grid conditions and seasonal variations in Indian electrical networks.
-    *   Robust against high volatility signatures characteristic of lower-tier Indian cities with irregular industrial schedules.
-
-*   **📊 Wavelet Regression Analysis**:
-    *   Decomposes time-series data using multi-scale wavelet transforms for detailed frequency and temporal analysis.
-    *   Captures both short-term transients and long-term trends in power consumption patterns.
-    *   Enables precise identification of load components across multiple time scales.
-
-*   **📈 Statistical Validation (ADF & PP Tests)**:
-    *   Performs Augmented Dickey-Fuller (ADF) and Phillips-Perron (PP) tests to ensure time-series stationarity.
-    *   Validates data quality and identifies structural breaks in the grid load patterns.
-    *   Ensures forecasting models operate on statistically sound foundations.
-
-*   **🎯 Multi-Objective Optimization**:
-    *   Optimizes multiple competing objectives: accuracy, latency, and resource utilization.
-    *   Balances forecasting precision against computational efficiency for real-time operations.
-    *   Enables Pareto-optimal decision-making for grid management strategies.
-
+*   **📈 Adaptive Time-Series Ensemble**:
+    *   Integrates deep learning **LSTM** models (using 12-lag autoregressive weight matrices) with **ARIMA** models (utilizing Fourier seasonal cycle projections).
+    *   Generates a weighted ensemble load prediction: $L_t = 0.6 \cdot LSTM + 0.4 \cdot ARIMA$.
+    *   Robust against high volatility load signatures characteristic of lower-tier Indian cities with irregular industrial schedules.
 *   **🛡️ Cascading Failure Prevention**:
     *   Simulates grid flows using a Compartment Mass-Balance Filter to calculate node volumes over a 12-to-24 hour horizon.
     *   Detects boundary violations and automatically flags and **isolates** failed nodes (severing connections to prevent cascading network failures across municipal limits).
-
 *   **⚡ Real-Time Streaming (WebSockets)**:
     *   Features a persistent background Telemetry Ingestion Daemon ticking every 2 seconds.
     *   Broadcasts live grid health, log volumes, and alerts to all connected WebSockets.
-
 *   **💾 Supabase Sync & Row Level Security (RLS)**:
     *   Supports dynamic synchronization between local storage, in-memory configurations, and Supabase database tables.
     *   Leverages database RLS policies allowing clients to read raw telemetry while routing writes securely through the backend.
@@ -127,7 +101,7 @@ graph TD
 
 ## 🗺️ Multi-Tier Indian Grid Topology & Testing
 
-AuraGrid is configurable for different cities via environment settings. The reference deployment was calibrated and tested against a three-node transmission cycle representing typical municipal hierarchies across Indian states.
+AuraGrid is configurable for different cities via environment settings. The reference deployment was calibrated and tested against a three-node transmission cycle representing typical municipal hubs (using BESCOM coordinates):
 
 | Calibrated Node | Typology Category | Capacity Limits (Min / Max) | Role in Indian Grids |
 | :--- | :--- | :--- | :--- |
@@ -187,7 +161,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 AuraGrid is optimized for deployment to **Google Cloud Run** using containerized Docker environments. 
 
-For complete documentation regarding gcloud configuration, WSL (Windows Subsystem for Linux) setup, building with Cloud Build, and secure secret management, read the dedicated [GCP Deployment Walkthrough](./docs/gcp-deployment.md).
+For complete documentation regarding gcloud configuration, WSL (Windows Subsystem for Linux) setup, building with Cloud Build, and secure secret management, read the dedicated [GCP Deployment Walkthrough](file:///e:/AURAGRID/GCP_DEPLOYMENT_WALKTHROUGH.md).
 
 ---
 

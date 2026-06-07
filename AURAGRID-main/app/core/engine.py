@@ -660,6 +660,7 @@ class TelemetryStore:
     def __init__(self):
         self.lock = threading.Lock()
         self.listeners: Set[Callable[[str, Dict[str, Any]], None]] = set()
+        self.agentic_switch_enabled: Dict[str, bool] = {}
         self.reset_to_defaults(sync_db=False)
 
     def reset_to_defaults(self, sync_db: bool = True, target_city_id: Optional[str] = None):
@@ -676,11 +677,14 @@ class TelemetryStore:
                 self.isolated_nodes = {}
                 self.volume_log = {}
                 self.load_log = {}
+                self.agentic_switch_enabled = {}
                 
             for city_id in cities_to_reset:
                 city_config = settings.all_cities.get(city_id)
                 if not city_config:
                     continue
+                    
+                self.agentic_switch_enabled[city_id] = False
                     
                 self.volumes[city_id] = {node.name: node.initial_volume for node in city_config.nodes}
                 self.capacities[city_id] = {
@@ -781,7 +785,8 @@ class TelemetryStore:
                 "cascade_triggered": self.cascade_triggered[city_id],
                 "isolated_nodes": list(self.isolated_nodes[city_id]),
                 "volume_log": {node: list(vals[-24:]) for node, vals in self.volume_log[city_id].items()},
-                "load_log": {node: list(vals[-24:]) for node, vals in self.load_log[city_id].items()}
+                "load_log": {node: list(vals[-24:]) for node, vals in self.load_log[city_id].items()},
+                "agentic_switch_enabled": self.agentic_switch_enabled.get(city_id, False)
             }
 
     def update_constants(self, city_id: str, volumes: Dict[str, float], capacities: Dict[str, Dict[str, float]], connections: Dict[str, Dict[str, float]]):
@@ -856,6 +861,63 @@ class TelemetryStore:
                 self.load_histories[city_id][node].append(current_loads[node])
                 self.load_histories[city_id][node] = self.load_histories[city_id][node][-12:]
                 self.load_log[city_id][node].append(current_loads[node])
+
+            # Proactive Agentic Switch checks to isolate nodes before cascading breaches occur
+            if self.agentic_switch_enabled.get(city_id, False):
+                for i in nodes:
+                    if self.statuses[city_id][i] == "ISOLATED":
+                        continue
+                        
+                    limits = self.capacities[city_id][i]
+                    next_load_est = current_loads[i] * 1.10
+                    
+                    # Estimate next step flow dynamics
+                    inlet = sum(
+                        self.connections[city_id].get(j, {}).get(i, 0.0) * self.volumes[city_id][j]
+                        for j in nodes if j != i
+                    )
+                    outlet = sum(
+                        self.connections[city_id].get(i, {}).get(j, 0.0) * self.volumes[city_id][i]
+                        for j in nodes if j != i
+                    )
+                    node_info = next((n for n in city_config.nodes if n.name == i), None)
+                    generation = 0.0
+                    if node_info and node_info.voltage_class >= 400:
+                        generation = 200.0
+                    elif node_info and node_info.voltage_class >= 220:
+                        generation = 80.0
+                        
+                    next_vol_est = self.volumes[city_id][i] + (inlet - outlet - next_load_est + generation)
+                    next_vol_est = max(0.0, round(next_vol_est, 2))
+                    
+                    if next_vol_est < limits["min"] or next_vol_est > limits["max"]:
+                        # Trip node proactively to protect neighbors
+                        self.statuses[city_id][i] = "ISOLATED"
+                        self.cascade_triggered[city_id] = True
+                        if i not in self.isolated_nodes[city_id]:
+                            self.isolated_nodes[city_id].append(i)
+                        logger.info(f"AI AGENTIC SWITCH: Proactively tripped node {i} (estimated next volume: {next_vol_est} MW)")
+                        
+                        # Save AGENTIC_PROTECTIVE_TRIP audit log in Supabase
+                        try:
+                            from app.core.database import get_supabase_client
+                            client = get_supabase_client()
+                            if client:
+                                client.table("audit_logs").insert({
+                                    "city_id": city_id,
+                                    "event_type": "AGENTIC_PROTECTIVE_TRIP",
+                                    "node_name": i,
+                                    "action_taken": f"AI Agentic Switch proactively isolated substation to prevent cascading blackout. Projected load breach at volume {next_vol_est:.2f} MW."
+                                }).execute()
+                        except Exception as ex:
+                            logger.error(f"Failed to save AGENTIC_PROTECTIVE_TRIP audit log: {str(ex)}")
+                            
+                        # Cut connections immediately
+                        for j in nodes:
+                            if i in self.connections[city_id]:
+                                self.connections[city_id][i][j] = 0.0
+                            if j in self.connections[city_id]:
+                                self.connections[city_id][j][i] = 0.0
 
             new_v = {}
             for i in nodes:
