@@ -3,6 +3,9 @@ export interface NodeData {
   capacityRateOfChangeDelta: number;
   maxCapacity: number;
   status: "STABLE" | "VULNERABLE" | "CRITICAL_CASCADE_RISK" | "OFFLINE";
+  waveletApproxSeries?: number[];
+  waveletDetailSeries?: number[];
+  combinedSeries?: number[];
 }
 
 // Fallback legacy configurations for safety
@@ -102,11 +105,32 @@ export function runDynamicLocalForecastFallback(
       }
     }
 
+    // Populate mock curves for time-series charting
+    const waveletApproxSeries: number[] = [];
+    const waveletDetailSeries: number[] = [];
+    const combinedSeries: number[] = [];
+    for (let h = 1; h <= 12; h++) {
+      const gVal = growth * h;
+      const dVal = Math.sin((h / 4) * Math.PI) * amplitude * 0.85;
+      const cIndex = h > 6 ? (h - 6) * 45.0 : 0;
+      
+      const waveletApprox = baseLoad + gVal;
+      const waveletDetail = dVal + cIndex;
+      const combined = waveletApprox + waveletDetail;
+      
+      waveletApproxSeries.push(parseFloat(waveletApprox.toFixed(2)));
+      waveletDetailSeries.push(parseFloat(waveletDetail.toFixed(2)));
+      combinedSeries.push(parseFloat(Math.max(5.0, combined).toFixed(2)));
+    }
+
     fallbackNodes[name] = {
       calculatedLoadTarget: parseFloat(calculatedLoad.toFixed(2)),
       capacityRateOfChangeDelta: parseFloat(delta.toFixed(2)),
       maxCapacity: maxCapacity,
-      status: status
+      status: status,
+      waveletApproxSeries,
+      waveletDetailSeries,
+      combinedSeries
     };
   }
 

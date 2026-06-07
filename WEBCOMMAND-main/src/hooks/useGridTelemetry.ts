@@ -107,7 +107,67 @@ export function useGridTelemetry(mounted: boolean, isOffline: boolean, baseTime:
 
   // --- Immediate Live Ingestion on Mount / Reload / City Change ---
   useEffect(() => {
-    if (!mounted || isOffline) return;
+    if (!mounted) return;
+
+    if (isOffline) {
+      const defaultNodes: NodeConfigMetadata[] = [
+        {
+          name: "Sharavathi Hydro Hub",
+          initial_volume: 800.0,
+          max_capacity: 1500.0,
+          min_capacity: 20.0,
+          growth: 65.0,
+          amplitude: 80.0,
+          latitude: 12.9716,
+          longitude: 77.5946,
+          voltage_class: 400
+        },
+        {
+          name: "Koramangala Residential",
+          initial_volume: 500.0,
+          max_capacity: 1000.0,
+          min_capacity: 20.0,
+          growth: 45.0,
+          amplitude: 120.0,
+          latitude: 12.9352,
+          longitude: 77.6244,
+          voltage_class: 110
+        },
+        {
+          name: "Whitefield Industrial",
+          initial_volume: 650.0,
+          max_capacity: 1200.0,
+          min_capacity: 20.0,
+          growth: 55.0,
+          amplitude: 100.0,
+          latitude: 12.9698,
+          longitude: 77.7499,
+          voltage_class: 220
+        }
+      ];
+
+      const defaultConnections: ConnectionConfigMetadata[] = [
+        { source: "Sharavathi Hydro Hub", target: "Koramangala Residential", efficiency: 0.15 },
+        { source: "Koramangala Residential", target: "Whitefield Industrial", efficiency: 0.12 },
+        { source: "Whitefield Industrial", target: "Sharavathi Hydro Hub", efficiency: 0.08 }
+      ];
+
+      setNodesConfig(defaultNodes);
+      setConnectionsConfig(defaultConnections);
+
+      const defaultHistory: Record<string, { volume: number[]; load: number[] }> = {};
+      defaultNodes.forEach(node => {
+        const vols = Array(24).fill(0).map((_, i) => {
+          const t = i % 24;
+          const diurnal = Math.sin(2 * Math.PI * (t - 6) / 24) * node.amplitude * 0.5;
+          return Math.round(node.initial_volume * 0.8 + diurnal);
+        });
+        const loads = vols.map(v => parseFloat((v * 0.8).toFixed(2)));
+        defaultHistory[node.name] = { volume: vols, load: loads };
+      });
+      setHistoricalData(defaultHistory);
+      return;
+    }
 
     const fetchInitialTelemetry = async () => {
       const pollUrl = getApiBaseUrl();

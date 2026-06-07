@@ -1,9 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "leaflet/dist/leaflet.css";
 
 /* AuraGrid CSS Variables & Industrial SCADA Color System */
 :root {
-  --font-family: 'Outfit', sans-serif;
+  --font-family: var(--font-outfit), 'Outfit', sans-serif;
   
   /* Industrial Charcoal Palette (strictly zero blue/purple) */
   --bg-primary: #09090b;        /* Matte obsidian black */
@@ -408,8 +407,8 @@ body {
   width: 100%;
   height: 100%;
   background-image: 
-    radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.05) 1px, transparent 0),
-    radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.03) 0%, transparent 70%);
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.02) 1px, transparent 0),
+    radial-gradient(circle at 50% 50%, rgba(249, 115, 22, 0.02) 0%, transparent 70%);
   background-size: 40px 40px, 100% 100%;
   pointer-events: none;
   z-index: 1;
@@ -551,7 +550,7 @@ body {
   height: 100px;
   min-height: 100px;
   width: 100%;
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  background: #121214;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0.9rem 1.5rem;
   display: flex;

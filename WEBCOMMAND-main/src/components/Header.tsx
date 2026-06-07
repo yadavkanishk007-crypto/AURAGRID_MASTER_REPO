@@ -13,6 +13,8 @@ interface HeaderProps {
   isCityLocked?: boolean;
   userEmail?: string;
   onLogout?: () => void;
+  agenticSwitchEnabled?: boolean;
+  onToggleAgenticSwitch?: () => void;
 }
 
 export default function Header({
@@ -25,12 +27,14 @@ export default function Header({
   onCityChange,
   isCityLocked = false,
   userEmail,
-  onLogout
+  onLogout,
+  agenticSwitchEnabled = false,
+  onToggleAgenticSwitch
 }: HeaderProps) {
   return (
     <header className="header-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 20px" }}>
       <div className="logo-container" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-        <img src="/logo.png" alt="AURAGRID Logo" style={{ width: "24px", height: "24px", borderRadius: "6px" }} />
+        <img src="/logo.png" alt="AURAGRID Logo" width="24" height="24" style={{ width: "24px", height: "24px", borderRadius: "6px" }} />
         <h1 className="logo-text" style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700 }}>National Grid Authority - Control Room</h1>
         
         {supportedCities && supportedCities.length > 0 && onCityChange && (
@@ -64,21 +68,6 @@ export default function Header({
           </div>
         )}
 
-        {usingLocalFallback && !isOffline && (
-          <span style={{
-            fontSize: "0.65rem",
-            background: "rgba(249, 115, 22, 0.1)",
-            color: "#f97316",
-            border: "1px solid rgba(249, 115, 22, 0.2)",
-            padding: "2px 8px",
-            borderRadius: "4px",
-            fontWeight: 600,
-            letterSpacing: "0.05em",
-            textTransform: "uppercase"
-          }}>
-            Sandbox Simulation Active
-          </span>
-        )}
         
         {/* RLS Ingest Security Badge */}
         <span className="security-rls-badge" title="Database security: Select operations connect using anon public key. Direct inserts/updates are restricted.">
@@ -134,6 +123,38 @@ export default function Header({
           </svg>
           <span>{isOffline ? "Connect API" : "Disconnect API"}</span>
         </button>
+
+        {/* AI Agentic Switch Toggle Button */}
+        {!isOffline && onToggleAgenticSwitch && (
+          <button
+            onClick={onToggleAgenticSwitch}
+            className={`btn-toggle-agentic ${agenticSwitchEnabled ? "agentic-active" : ""}`}
+            title="Toggle AI Agentic Switch for proactive cascading protective trips"
+            style={{
+              padding: "4px 8px",
+              fontSize: "0.7rem",
+              background: agenticSwitchEnabled ? "rgba(16, 185, 129, 0.12)" : "rgba(30, 41, 59, 0.4)",
+              color: agenticSwitchEnabled ? "#34d399" : "#94a3b8",
+              border: `1px solid ${agenticSwitchEnabled ? "rgba(16, 185, 129, 0.25)" : "rgba(255, 255, 255, 0.08)"}`,
+              borderRadius: "6px",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <span style={{
+              width: "5px",
+              height: "5px",
+              borderRadius: "50%",
+              backgroundColor: agenticSwitchEnabled ? "#34d399" : "#94a3b8",
+              boxShadow: agenticSwitchEnabled ? "0 0 6px #34d399" : "none",
+            }} />
+            <span>AI Agentic Switch: {agenticSwitchEnabled ? "ENABLED" : "DISABLED"}</span>
+          </button>
+        )}
 
         {onLogout && (
           <button

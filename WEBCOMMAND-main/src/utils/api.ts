@@ -16,8 +16,14 @@ export function getApiBaseUrl(): string {
       if (host.includes("webcommand-center")) {
         return `${protocol}//${host.replace("webcommand-center", "auragrid-backend")}`;
       }
+      if (host.includes("webcommand-centre")) {
+        return `${protocol}//${host.replace("webcommand-centre", "auragrid-backend")}`;
+      }
       if (host.includes("webcommand_center")) {
         return `${protocol}//${host.replace("webcommand_center", "auragrid-backend")}`;
+      }
+      if (host.includes("webcommand_centre")) {
+        return `${protocol}//${host.replace("webcommand_centre", "auragrid-backend")}`;
       }
     }
 

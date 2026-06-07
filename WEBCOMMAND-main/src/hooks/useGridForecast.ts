@@ -20,6 +20,9 @@ interface ForecastMetric {
   calculated_peak_load_target: number;
   capacity_rate_of_change_delta: number;
   system_structural_limit: number;
+  wavelet_approx_series?: number[];
+  wavelet_detail_series?: number[];
+  combined_series?: number[];
 }
 
 interface PropagationAlert {
@@ -54,6 +57,13 @@ export function useGridForecast({
   const [worstNodeName, setWorstNodeName] = useState("");
   const [exposureVector, setExposureVector] = useState("Koramangala Residential");
   const [usingLocalFallback, setUsingLocalFallback] = useState(false);
+  const [modeActivated, setModeActivated] = useState<string>("WAVELET_REGRESSION");
+  const [stationarityTests, setStationarityTests] = useState<any>(null);
+  const [multiObjectiveOptimization, setMultiObjectiveOptimization] = useState<any>(null);
+  const [confusionMatrixMetrics, setConfusionMatrixMetrics] = useState<any>(null);
+  const [failureMatrixMetrics, setFailureMatrixMetrics] = useState<any>(null);
+  const [cascadingMatrixMetrics, setCascadingMatrixMetrics] = useState<any>(null);
+  const [agenticSwitchEnabled, setAgenticSwitchEnabled] = useState(false);
 
   const [modalState, setModalState] = useState<{
     visible: boolean;
@@ -103,6 +113,33 @@ export function useGridForecast({
     setSystemState(results.globalState);
     setWorstNodeName(results.worstNode);
     setExposureVector(results.exposure);
+    
+    // Set mock fallback analytics matrices
+    setConfusionMatrixMetrics({
+      true_positives: results.globalState === "CRITICAL_CASCADE_RISK" ? 2 : 0,
+      false_positives: 0,
+      false_negatives: 0,
+      true_negatives: nodesConfig.length - (results.globalState === "CRITICAL_CASCADE_RISK" ? 2 : 0)
+    });
+    setFailureMatrixMetrics({
+      accurate: Math.max(0, nodesConfig.length - Math.max(1, Math.floor(lookAheadHour / 3))),
+      phase_lag: Math.max(0, Math.floor(lookAheadHour / 4)),
+      scale_bias: Math.max(0, Math.floor(lookAheadHour / 6)),
+      composite: Math.max(0, Math.floor(lookAheadHour / 8))
+    });
+    
+    const mockCascading: Record<string, Record<string, number>> = {};
+    nodesConfig.forEach(src => {
+      mockCascading[src.name] = {};
+      nodesConfig.forEach(tgt => {
+        if (src.name === tgt.name) {
+          mockCascading[src.name][tgt.name] = 0;
+        } else {
+          mockCascading[src.name][tgt.name] = Math.min(95, Math.floor(Math.random() * 40) + lookAheadHour * 3);
+        }
+      });
+    });
+    setCascadingMatrixMetrics(mockCascading);
 
     // Warning Modal popup trigger check exactly on breach transition
     if (results.globalState === "CRITICAL_CASCADE_RISK") {
@@ -135,7 +172,13 @@ export function useGridForecast({
 
   // --- Real-Time REST Ingestion Fetch Loop ---
   useEffect(() => {
-    if (!mounted || isOffline || nodesConfig.length === 0) return;
+    if (!mounted || nodesConfig.length === 0) return;
+
+    if (isOffline) {
+      runLocalForecastFallbackHook();
+      setUsingLocalFallback(true);
+      return;
+    }
 
     const triggerForecasterAPI = async () => {
       const apiBase = getApiBaseUrl();
@@ -181,6 +224,10 @@ export function useGridForecast({
 
         // Support array response
         if (Array.isArray(responseBody)) {
+          setModeActivated("WAVELET_REGRESSION");
+          setStationarityTests(null);
+          setMultiObjectiveOptimization(null);
+          setConfusionMatrixMetrics(null);
           const nodesList = responseBody as ForecastNode[];
           for (const item of nodesList) {
             const name = item.node_id;
@@ -188,7 +235,10 @@ export function useGridForecast({
               calculatedLoadTarget: item.forecast_horizon_metrics.calculated_peak_load_target,
               capacityRateOfChangeDelta: item.forecast_horizon_metrics.capacity_rate_of_change_delta,
               maxCapacity: item.forecast_horizon_metrics.system_structural_limit,
-              status: item.system_state_evaluation
+              status: item.system_state_evaluation,
+              waveletApproxSeries: item.forecast_horizon_metrics.wavelet_approx_series,
+              waveletDetailSeries: item.forecast_horizon_metrics.wavelet_detail_series,
+              combinedSeries: item.forecast_horizon_metrics.combined_series
             };
             if (item.system_state_evaluation === "CRITICAL_CASCADE_RISK") {
               parsedGlobalState = "CRITICAL_CASCADE_RISK";
@@ -199,6 +249,15 @@ export function useGridForecast({
             }
           }
         } else if (responseBody && typeof responseBody === "object") {
+          const resObj = responseBody as any;
+          if (resObj.mode_activated) setModeActivated(resObj.mode_activated);
+          if (resObj.stationarity_tests) setStationarityTests(resObj.stationarity_tests);
+          if (resObj.multi_objective_optimization) setMultiObjectiveOptimization(resObj.multi_objective_optimization);
+          if (resObj.confusion_matrix_metrics) setConfusionMatrixMetrics(resObj.confusion_matrix_metrics);
+          if (resObj.failure_matrix_metrics) setFailureMatrixMetrics(resObj.failure_matrix_metrics);
+          if (resObj.cascading_matrix_metrics) setCascadingMatrixMetrics(resObj.cascading_matrix_metrics);
+          if (resObj.agentic_switch_enabled !== undefined) setAgenticSwitchEnabled(resObj.agentic_switch_enabled);
+
           const nodesObj = responseBody as Record<string, ForecastNode>;
           for (const name of Object.keys(nodesObj)) {
             const item = nodesObj[name];
@@ -207,7 +266,10 @@ export function useGridForecast({
                 calculatedLoadTarget: item.forecast_horizon_metrics.calculated_peak_load_target,
                 capacityRateOfChangeDelta: item.forecast_horizon_metrics.capacity_rate_of_change_delta,
                 maxCapacity: item.forecast_horizon_metrics.system_structural_limit,
-                status: item.system_state_evaluation
+                status: item.system_state_evaluation,
+                waveletApproxSeries: item.forecast_horizon_metrics.wavelet_approx_series,
+                waveletDetailSeries: item.forecast_horizon_metrics.wavelet_detail_series,
+                combinedSeries: item.forecast_horizon_metrics.combined_series
               };
               if (item.system_state_evaluation === "CRITICAL_CASCADE_RISK") {
                 parsedGlobalState = "CRITICAL_CASCADE_RISK";
@@ -343,6 +405,14 @@ export function useGridForecast({
     exposureVector,
     usingLocalFallback,
     modalState,
-    handleCloseModal
+    handleCloseModal,
+    modeActivated,
+    stationarityTests,
+    multiObjectiveOptimization,
+    confusionMatrixMetrics,
+    failureMatrixMetrics,
+    cascadingMatrixMetrics,
+    agenticSwitchEnabled,
+    setAgenticSwitchEnabled
   };
 }

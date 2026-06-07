@@ -151,7 +151,7 @@ export default function LoginPage() {
               boxShadow: "0 8px 20px rgba(168, 85, 247, 0.3)"
             }}
           >
-            <img src="/logo.png" alt="AuraGrid" style={{ width: "32px", height: "32px", borderRadius: "4px" }} />
+            <img src="/logo.png" alt="AuraGrid" width="32" height="32" style={{ width: "32px", height: "32px", borderRadius: "4px" }} />
           </div>
           <h2 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", color: "#f8fafc", margin: "0 0 8px 0" }}>
             AuraGrid Control Room
