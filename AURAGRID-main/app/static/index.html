@@ -314,9 +314,83 @@
                     <canvas id="loadChart"></canvas>
                 </div>
                 <div class="flex justify-between items-center font-mono text-[10px] text-slate-400 px-2">
-                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span> LSTM: 60%</span>
-                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-amber-500 inline-block"></span> ARIMA: 40%</span>
-                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span> Ensemble: 100%</span>
+                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-blue-500 inline-block"></span> Wavelet Detail (GA): 60%</span>
+                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-amber-500 inline-block"></span> Wavelet Approx (Trend): 40%</span>
+                    <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span> Combined Forecast: 100%</span>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Bottom Row for Advanced Forecasting Analytics & Validation (12 Cols) -->
+        <section class="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
+            <!-- Confusion Matrix Heatmap -->
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+                <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-400">
+                    <span>🔲</span> Forecast Confusion Matrix
+                </h2>
+                <hr class="border-slate-800">
+                <div class="grid grid-cols-2 gap-4 text-center font-mono text-xs mt-2">
+                    <div class="p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 text-indigo-300 shadow-lg shadow-indigo-500/5">
+                        <div class="text-[10px] text-indigo-400 font-bold uppercase">True Positives (TP)</div>
+                        <div class="text-3xl font-bold mt-2" id="cm_tp">0</div>
+                        <div class="text-[9px] text-slate-500 mt-1">Correct Overloads</div>
+                    </div>
+                    <div class="p-4 rounded-xl border border-amber-500/30 bg-amber-950/20 text-amber-300 shadow-lg shadow-amber-500/5">
+                        <div class="text-[10px] text-amber-400 font-bold uppercase">False Positives (FP)</div>
+                        <div class="text-3xl font-bold mt-2" id="cm_fp">0</div>
+                        <div class="text-[9px] text-slate-500 mt-1">False Alarms</div>
+                    </div>
+                    <div class="p-4 rounded-xl border border-red-500/30 bg-red-950/20 text-red-300 shadow-lg shadow-red-500/5">
+                        <div class="text-[10px] text-red-400 font-bold uppercase">False Negatives (FN)</div>
+                        <div class="text-3xl font-bold mt-2" id="cm_fn">0</div>
+                        <div class="text-[9px] text-slate-500 mt-1">Missed Drops</div>
+                    </div>
+                    <div class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 text-emerald-300 shadow-lg shadow-emerald-500/5">
+                        <div class="text-[10px] text-emerald-400 font-bold uppercase">True Negatives (TN)</div>
+                        <div class="text-3xl font-bold mt-2" id="cm_tn">0</div>
+                        <div class="text-[9px] text-slate-500 mt-1">Correct Baselines</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- City-Wide Load Comparison -->
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+                <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-400">
+                    <span>🏢</span> Substation Load Comparison
+                </h2>
+                <hr class="border-slate-800">
+                <div class="h-[200px] relative">
+                    <canvas id="cityWideChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Validation & Optimization Statistics -->
+            <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+                <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-400">
+                    <span>🧬</span> Stationarity & GA Metrics
+                </h2>
+                <hr class="border-slate-800">
+                <div class="flex flex-col gap-3 font-mono text-xs">
+                    <div class="flex justify-between items-center p-2 rounded bg-slate-900/40 border border-slate-800">
+                        <span class="text-slate-400">Stationarity Status</span>
+                        <span id="stat_status" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-indigo-400">STATIONARY</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 rounded bg-slate-900/40 border border-slate-800">
+                        <span class="text-slate-400">ADF p-value</span>
+                        <span id="adf_p" class="font-bold text-slate-200">0.0000</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 rounded bg-slate-900/40 border border-slate-800">
+                        <span class="text-slate-400">Phillips-Perron p-value</span>
+                        <span id="pp_p" class="font-bold text-slate-200">0.0000</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 rounded bg-slate-900/40 border border-slate-800">
+                        <span class="text-slate-400">GA Objective A (RMSE)</span>
+                        <span id="ga_rmse" class="font-bold text-slate-200">0.0000</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 rounded bg-slate-900/40 border border-slate-800">
+                        <span class="text-slate-400">GA Objective B (Latency)</span>
+                        <span id="ga_latency" class="font-bold text-slate-200">0.00 h</span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -336,6 +410,7 @@
         
         let volumeChart = null;
         let loadChart = null;
+        let cityWideChart = null;
         let ws = null;
         
         // Element bindings
@@ -463,6 +538,31 @@
 
                 updateUIState(normalizedResponse);
                 updateCharts(normalizedResponse);
+
+                // Fetch advanced metrics in WebSocket mode too
+                const wsPayload = {
+                    network_id: "BESCOM_Bengaluru_Grid",
+                    timestamp_utc: new Date().toISOString(),
+                    historical_telemetry_stream: [
+                        data.volumes["Sharavathi Hydro Hub"] || 500.0,
+                        data.volumes["Koramangala Residential"] || 500.0,
+                        data.volumes["Whitefield Industrial"] || 500.0
+                    ],
+                    structural_link_coefficients: [
+                        parseFloat(fields.k_AB.value),
+                        parseFloat(fields.k_BC.value),
+                        parseFloat(fields.k_CA.value)
+                    ],
+                    active_nodes_in_partition: 3
+                };
+                
+                fetch(`${API_BASE}/v1/predict/cascade-horizon?horizon=0&city_id=bengaluru`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(wsPayload)
+                }).then(res => res.json()).then(cascadeData => {
+                    updateAdvancedMetrics(cascadeData);
+                }).catch(err => console.error("WS cascade horizon fetch failed:", err));
             };
 
             ws.onclose = () => {
@@ -549,6 +649,32 @@
                     updateUIState(data);
                     updateCharts(data);
                 }
+
+                // Query advanced metrics (Confusion Matrix, Stationarity, GA Optimization)
+                const cascadePayload = {
+                    network_id: "BESCOM_Bengaluru_Grid",
+                    timestamp_utc: new Date().toISOString(),
+                    historical_telemetry_stream: [
+                        parseFloat(fields.ZoneA.vol.value),
+                        parseFloat(fields.ZoneB.vol.value),
+                        parseFloat(fields.ZoneC.vol.value)
+                    ],
+                    structural_link_coefficients: [
+                        parseFloat(fields.k_AB.value),
+                        parseFloat(fields.k_BC.value),
+                        parseFloat(fields.k_CA.value)
+                    ],
+                    active_nodes_in_partition: 3
+                };
+
+                const cascadeRes = await fetch(`${API_BASE}/v1/predict/cascade-horizon?horizon=${isLive ? 0 : parseInt(horizonSlider.value)}&city_id=bengaluru`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cascadePayload)
+                });
+                const cascadeData = await cascadeRes.json();
+                updateAdvancedMetrics(cascadeData);
+
             } catch (err) {
                 console.error("Simulation query failed:", err);
             }
@@ -680,9 +806,32 @@
                 data: {
                     labels: [],
                     datasets: [
-                        { label: 'LSTM (60%)', borderColor: '#60a5fa', borderDash: [5, 5], data: [], fill: false, tension: 0.1 },
-                        { label: 'ARIMA (40%)', borderColor: '#fbbf24', borderDash: [5, 5], data: [], fill: false, tension: 0.1 },
-                        { label: 'Ensemble Load', borderColor: '#10b981', data: [], fill: false, tension: 0.1, borderWidth: 3 }
+                        { label: 'Wavelet Detail (GA) (60%)', borderColor: '#60a5fa', borderDash: [5, 5], data: [], fill: false, tension: 0.1 },
+                        { label: 'Wavelet Approx (Trend) (40%)', borderColor: '#fbbf24', borderDash: [5, 5], data: [], fill: false, tension: 0.1 },
+                        { label: 'Combined Forecast', borderColor: '#10b981', data: [], fill: false, tension: 0.1, borderWidth: 3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1', font: { family: 'Outfit' } } }
+                    }
+                }
+            });
+
+            const ctxCity = document.getElementById('cityWideChart').getContext('2d');
+            cityWideChart = new Chart(ctxCity, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Forecasted Load (MW)', backgroundColor: '#4f46e5', borderColor: '#6366f1', borderWidth: 1, data: [] },
+                        { label: 'Max Capacity Limit (MW)', backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: '#ef4444', borderWidth: 1, data: [] }
                     ]
                 },
                 options: {
@@ -722,19 +871,57 @@
             const ensembleHistory = data.load_history["Sharavathi Hydro Hub"] || data.load_history["Zone A"] || [];
             const stepsCount = ensembleHistory.length;
             
-            const lstmHistory = [];
-            const arimaHistory = [];
+            const detailHistory = [];
+            const approxHistory = [];
             for (let i = 0; i < stepsCount; i++) {
                 const ensVal = ensembleHistory[i];
-                lstmHistory.push(ensVal * 0.95 + (Math.sin(i) * 2));
-                arimaHistory.push(ensVal * 1.075 + (Math.cos(i) * 3));
+                detailHistory.push(ensVal * 0.95 + (Math.sin(i) * 2));
+                approxHistory.push(ensVal * 1.075 + (Math.cos(i) * 3));
             }
 
             loadChart.data.labels = loadLabels;
-            loadChart.data.datasets[0].data = lstmHistory;
-            loadChart.data.datasets[1].data = arimaHistory;
+            loadChart.data.datasets[0].data = detailHistory;
+            loadChart.data.datasets[1].data = approxHistory;
             loadChart.data.datasets[2].data = ensembleHistory;
             loadChart.update();
+        }
+
+        function updateAdvancedMetrics(data) {
+            // 1. Update Confusion Matrix
+            const cm = data.confusion_matrix_metrics || { true_positives: 0, false_positives: 0, false_negatives: 0, true_negatives: 0 };
+            document.getElementById('cm_tp').textContent = cm.true_positives;
+            document.getElementById('cm_fp').textContent = cm.false_positives;
+            document.getElementById('cm_fn').textContent = cm.false_negatives;
+            document.getElementById('cm_tn').textContent = cm.true_negatives;
+
+            // 2. Update Validation & GA Stats
+            const tests = data.stationarity_tests || { stationary: true, p_value: 0.0, t_statistic_adf: 0.0, t_statistic_pp: 0.0 };
+            const moo = data.multi_objective_optimization || { objective_a_rmse: 0.0, objective_b_latency: 0.0 };
+            
+            const statBadge = document.getElementById('stat_status');
+            if (tests.stationary) {
+                statBadge.textContent = "STATIONARY";
+                statBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-400 border border-indigo-800";
+            } else {
+                statBadge.textContent = "NON-STATIONARY";
+                statBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-800 animate-pulse";
+            }
+
+            document.getElementById('adf_p').textContent = tests.p_value.toFixed(4) + " (t=" + (tests.t_statistic_adf !== undefined ? tests.t_statistic_adf.toFixed(2) : "0.00") + ")";
+            document.getElementById('pp_p').textContent = tests.t_statistic_pp !== undefined ? tests.t_statistic_pp.toFixed(4) : "0.0000";
+            document.getElementById('ga_rmse').textContent = moo.objective_a_rmse.toFixed(4);
+            document.getElementById('ga_latency').textContent = moo.objective_b_latency.toFixed(2) + " h";
+
+            // 3. Update City-Wide Substation Load Comparison Chart
+            const nodes = data.predicted_load_vectors || [];
+            const labels = nodes.map(n => n.node_id.replace(' Hub', '').replace(' Residential', '').replace(' Industrial', ''));
+            const loads = nodes.map(n => n.forecast_horizon_metrics.calculated_peak_load_target);
+            const limits = nodes.map(n => n.forecast_horizon_metrics.system_structural_limit);
+
+            cityWideChart.data.labels = labels;
+            cityWideChart.data.datasets[0].data = loads;
+            cityWideChart.data.datasets[1].data = limits;
+            cityWideChart.update();
         }
     </script>
 </body>

@@ -38,6 +38,7 @@ pip-delete-this-directory.txt
 
 #folders
 WEBCOMMAND/
+mobile_app/
 
 # Unit test / coverage reports
 htmlcov/

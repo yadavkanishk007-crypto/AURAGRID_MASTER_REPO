@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile_app/features/spatial_control/data/models/node_model.dart';
+import 'package:aurgrid_field_worker/features/spatial_control/data/models/node_model.dart';
 
 void main() {
   group('NodeModel Unit Tests', () {
